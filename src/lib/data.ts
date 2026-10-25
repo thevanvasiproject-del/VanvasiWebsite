@@ -41,92 +41,179 @@ export function isBatchSellable(batch: Batch): boolean {
   return daysUntil > MIN_SELLABLE_DAYS;
 }
 
+const FALLBACK_PRODUCTS: Product[] = [
+  {
+    id: "prod_hhb",
+    name: "Hot Honey Butter",
+    slug: "hot-honey-butter",
+    characterTitle: "The Fiery Artisan",
+    tagline: "Whipped highland butter infused with raw honey & smoked bird's eye chili.",
+    description: "Crafted in small batches using slow-churned butter from mountain dairies, blended with uncooked Himalayan honey and whole bird's eye chilies smoked over oak chips.",
+    ingredients: [
+      "Cultured highland butter (pasteurized cow's milk, live cultures)",
+      "Raw multifloral wild honey (unpasteurized, sourced from Makwanpur)",
+      "Bird's eye chili flakes & smoked pods",
+      "Hand-harvested Himalayan pink mineral salt",
+    ],
+    isActive: true,
+    createdAt: "2026-09-10T00:00:00.000Z",
+    updatedAt: "2026-09-10T00:00:00.000Z",
+    images: [
+      {
+        id: "img_hhb_1",
+        productId: "prod_hhb",
+        url: "/images/hot-honey-butter.svg",
+        altText: "Hot Honey Butter Jar",
+        isPrimary: true,
+        sortOrder: 1,
+      },
+    ],
+    variants: [
+      { id: "var_hhb_100", productId: "prod_hhb", size: "100 g", price: 450, sku: "TVP-HHB-100", isActive: true, createdAt: "2026-09-10T00:00:00.000Z", sellableStock: 18 },
+      { id: "var_hhb_250", productId: "prod_hhb", size: "250 g", price: 950, sku: "TVP-HHB-250", isActive: true, createdAt: "2026-09-10T00:00:00.000Z", sellableStock: 14 },
+    ],
+    minPrice: 450,
+  },
+  {
+    id: "prod_gb",
+    name: "Garlic Butter",
+    slug: "garlic-butter",
+    characterTitle: "The Roasted Classic",
+    tagline: "Slow-roasted garlic confit folded into sea-salted alpine butter.",
+    description: "Whole local garlic cloves poached at 85°C for four hours in cold-pressed mustard oil until spreadable like cream, then beaten into fresh butter.",
+    ingredients: [
+      "Cultured highland butter (pasteurized cow's milk)",
+      "Roasted local organic garlic confit",
+      "Cold-pressed virgin mustard oil",
+      "Fresh dried mountain thyme",
+      "Flaky sea salt",
+    ],
+    isActive: true,
+    createdAt: "2026-09-14T00:00:00.000Z",
+    updatedAt: "2026-09-14T00:00:00.000Z",
+    images: [
+      {
+        id: "img_gb_1",
+        productId: "prod_gb",
+        url: "/images/garlic-butter.svg",
+        altText: "Garlic Butter Jar",
+        isPrimary: true,
+        sortOrder: 1,
+      },
+    ],
+    variants: [
+      { id: "var_gb_100", productId: "prod_gb", size: "100 g", price: 400, sku: "TVP-GB-100", isActive: true, createdAt: "2026-09-14T00:00:00.000Z", sellableStock: 22 },
+      { id: "var_gb_250", productId: "prod_gb", size: "250 g", price: 850, sku: "TVP-GB-250", isActive: true, createdAt: "2026-09-14T00:00:00.000Z", sellableStock: 8 },
+    ],
+    minPrice: 400,
+  },
+];
+
+const FALLBACK_DELIVERY_AREAS: DeliveryArea[] = [
+  { id: "area_ktm_ring", name: "Inside Kathmandu Ring Road", deliveryFee: 100, isActive: true, createdAt: "2026-09-10T00:00:00.000Z" },
+  { id: "area_ktm_outer", name: "Outside Ring Road (up to 5 km)", deliveryFee: 150, isActive: true, createdAt: "2026-09-10T00:00:00.000Z" },
+  { id: "area_lalitpur", name: "Lalitpur (Patan, Pulchowk, Jhamsikhel)", deliveryFee: 100, isActive: true, createdAt: "2026-09-10T00:00:00.000Z" },
+  { id: "area_bhaktapur", name: "Bhaktapur Core", deliveryFee: 200, isActive: true, createdAt: "2026-09-10T00:00:00.000Z" },
+];
+
 /**
  * Fetches all active products with their variants, images, and live sellable stock.
  */
 export async function getProducts(): Promise<Product[]> {
-  const dbProducts = await prisma.product.findMany({
-    where: { isActive: true },
-    include: {
-      images: { orderBy: { sortOrder: "asc" } },
-      variants: {
-        where: { isActive: true },
-        include: { batches: true },
+  try {
+    const dbProducts = await prisma.product.findMany({
+      where: { isActive: true },
+      include: {
+        images: { orderBy: { sortOrder: "asc" } },
+        variants: {
+          where: { isActive: true },
+          include: { batches: true },
+        },
       },
-    },
-  });
-
-  return dbProducts.map((p) => {
-    let parsedIngredients: string[] = [];
-    try {
-      parsedIngredients = JSON.parse(p.ingredients);
-    } catch {
-      parsedIngredients = p.ingredients.split(",").map((s) => s.trim());
-    }
-
-    const variantsWithStock = p.variants.map((v) => {
-      const sellableStock = v.batches
-        .filter((b) => b.quantityRemaining > 0 && getDaysUntil(b.bestBefore) > MIN_SELLABLE_DAYS)
-        .reduce((sum, b) => sum + b.quantityRemaining, 0);
-
-      return {
-        id: v.id,
-        productId: v.productId,
-        size: v.size,
-        price: v.price,
-        sku: v.sku,
-        isActive: v.isActive,
-        createdAt: v.createdAt.toISOString(),
-        sellableStock,
-      };
     });
 
-    const minPrice = variantsWithStock.reduce(
-      (min, v) => (v.price < min ? v.price : min),
-      variantsWithStock[0]?.price ?? 0
-    );
+    if (!dbProducts || dbProducts.length === 0) {
+      return FALLBACK_PRODUCTS;
+    }
 
-    return {
-      id: p.id,
-      name: p.name,
-      slug: p.slug,
-      characterTitle: p.characterTitle || undefined,
-      tagline: p.tagline,
-      description: p.description,
-      ingredients: parsedIngredients,
-      isActive: p.isActive,
-      createdAt: p.createdAt.toISOString(),
-      updatedAt: p.updatedAt.toISOString(),
-      images: p.images.map((img) => ({
-        id: img.id,
-        productId: img.productId,
-        url: img.url,
-        altText: img.altText,
-        isPrimary: img.isPrimary,
-        sortOrder: img.sortOrder,
-      })),
-      variants: variantsWithStock,
-      minPrice,
-    };
-  });
+    return dbProducts.map((p) => {
+      let parsedIngredients: string[] = [];
+      try {
+        parsedIngredients = JSON.parse(p.ingredients);
+      } catch {
+        parsedIngredients = p.ingredients.split(",").map((s) => s.trim());
+      }
+
+      const variantsWithStock = p.variants.map((v) => {
+        const sellableStock = v.batches
+          .filter((b) => b.quantityRemaining > 0 && getDaysUntil(b.bestBefore) > MIN_SELLABLE_DAYS)
+          .reduce((sum, b) => sum + b.quantityRemaining, 0);
+
+        return {
+          id: v.id,
+          productId: v.productId,
+          size: v.size,
+          price: v.price,
+          sku: v.sku,
+          isActive: v.isActive,
+          createdAt: v.createdAt.toISOString(),
+          sellableStock,
+        };
+      });
+
+      const minPrice = variantsWithStock.reduce(
+        (min, v) => (v.price < min ? v.price : min),
+        variantsWithStock[0]?.price ?? 0
+      );
+
+      return {
+        id: p.id,
+        name: p.name,
+        slug: p.slug,
+        characterTitle: p.characterTitle || undefined,
+        tagline: p.tagline,
+        description: p.description,
+        ingredients: parsedIngredients,
+        isActive: p.isActive,
+        createdAt: p.createdAt.toISOString(),
+        updatedAt: p.updatedAt.toISOString(),
+        images: p.images.map((img) => ({
+          id: img.id,
+          productId: img.productId,
+          url: img.url,
+          altText: img.altText,
+          isPrimary: img.isPrimary,
+          sortOrder: img.sortOrder,
+        })),
+        variants: variantsWithStock,
+        minPrice,
+      };
+    });
+  } catch (error) {
+    console.error("Database unavailable in getProducts, using fallback:", error);
+    return FALLBACK_PRODUCTS;
+  }
 }
 
 /**
  * Fetches a single product by slug from Prisma.
  */
 export async function getProduct(slug: string): Promise<Product | null> {
-  const p = await prisma.product.findUnique({
-    where: { slug },
-    include: {
-      images: { orderBy: { sortOrder: "asc" } },
-      variants: {
-        where: { isActive: true },
-        include: { batches: true },
+  try {
+    const p = await prisma.product.findUnique({
+      where: { slug },
+      include: {
+        images: { orderBy: { sortOrder: "asc" } },
+        variants: {
+          where: { isActive: true },
+          include: { batches: true },
+        },
       },
-    },
-  });
+    });
 
-  if (!p) return null;
+    if (!p) {
+      return FALLBACK_PRODUCTS.find((item) => item.slug === slug) || null;
+    }
 
   let parsedIngredients: string[] = [];
   try {
@@ -179,6 +266,10 @@ export async function getProduct(slug: string): Promise<Product | null> {
     variants: variantsWithStock,
     minPrice,
   };
+  } catch (error) {
+    console.error("Database unavailable in getProduct, using fallback:", error);
+    return FALLBACK_PRODUCTS.find((item) => item.slug === slug) || null;
+  }
 }
 
 /**
@@ -230,18 +321,27 @@ export async function getAvailability(
  * Fetches active delivery areas in Kathmandu from Prisma.
  */
 export async function getDeliveryAreas(): Promise<DeliveryArea[]> {
-  const areas = await prisma.deliveryArea.findMany({
-    where: { isActive: true },
-    orderBy: { deliveryFee: "asc" },
-  });
+  try {
+    const areas = await prisma.deliveryArea.findMany({
+      where: { isActive: true },
+      orderBy: { deliveryFee: "asc" },
+    });
 
-  return areas.map((a) => ({
-    id: a.id,
-    name: a.name,
-    deliveryFee: a.deliveryFee,
-    isActive: a.isActive,
-    createdAt: a.createdAt.toISOString(),
-  }));
+    if (!areas || areas.length === 0) {
+      return FALLBACK_DELIVERY_AREAS;
+    }
+
+    return areas.map((a) => ({
+      id: a.id,
+      name: a.name,
+      deliveryFee: a.deliveryFee,
+      isActive: a.isActive,
+      createdAt: a.createdAt.toISOString(),
+    }));
+  } catch (error) {
+    console.error("Database unavailable in getDeliveryAreas, using fallback:", error);
+    return FALLBACK_DELIVERY_AREAS;
+  }
 }
 
 /**
