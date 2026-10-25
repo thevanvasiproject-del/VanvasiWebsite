@@ -8,16 +8,16 @@ import { CheckCircle2, MapPin, Clock, Phone, Store, Truck, ShieldCheck } from "l
 export function OrderConfirmationView() {
   const searchParams = useSearchParams();
 
-  const orderNumber = searchParams.get("orderNumber") || "TVP-1004";
-  const name = searchParams.get("name") || "Valued Customer";
-  const phone = searchParams.get("phone") || "98XXXXXXXX";
-  const fulfilment = searchParams.get("fulfilment") || "delivery";
-  const area = searchParams.get("area") || "Kathmandu";
-  const address = searchParams.get("address") || "N/A";
-  const subtotal = searchParams.get("subtotal") || "1400";
-  const fee = searchParams.get("fee") || "100";
-  const total = searchParams.get("total") || "1500";
-  const itemsCount = searchParams.get("itemsCount") || "2";
+  const orderNumber = searchParams?.get("orderNumber") || "TVP-1004";
+  const name = searchParams?.get("name") || "Valued Customer";
+  const phone = searchParams?.get("phone") || "98XXXXXXXX";
+  const fulfilment = searchParams?.get("fulfilment") || "delivery";
+  const area = searchParams?.get("area") || "Kathmandu";
+  const address = searchParams?.get("address") || "N/A";
+  const subtotal = searchParams?.get("subtotal") || "1400";
+  const fee = searchParams?.get("fee") || "100";
+  const total = searchParams?.get("total") || "1500";
+  const itemsCount = searchParams?.get("itemsCount") || "2";
 
   const isPickup = fulfilment === "pickup";
 
