@@ -77,7 +77,7 @@ export function OrderConfirmationView() {
             </div>
             <div className="flex items-center gap-2.5 text-[#5E6961]">
               <Phone className="w-4 h-4 text-[#1F3A2B] flex-shrink-0" />
-              <span>Contact: +977 9801234567</span>
+              <span>Contact: <a href="tel:+9779705670733" className="text-[#1F3A2B] font-medium hover:underline">+977 970-5670733</a></span>
             </div>
           </div>
         ) : (
